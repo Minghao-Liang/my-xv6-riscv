@@ -143,6 +143,7 @@ kerneltrap()
   if(intr_get() != 0)
     panic("kerneltrap: interrupts enabled");
 
+// exception, that is always a fatal error
   if((which_dev = devintr()) == 0){
     printf("scause %p\n", scause);
     printf("sepc=%p stval=%p\n", r_sepc(), r_stval());
