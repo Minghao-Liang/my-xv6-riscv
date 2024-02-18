@@ -683,3 +683,39 @@ procdump(void)
     printf("\n");
   }
 }
+
+// Handle the page fault
+int handle_pagefault(uint64 va, struct proc *p)
+{
+  if(va >= p->sz || va < p->trapframe->sp){
+    // Page fault on virtual memory address higher than allocated or lower than stack.
+    // In xv6, heap is higher than stack.
+    //
+    //   MAXVA-> ---------------------
+    //           |     trampoline    |
+    //           ---------------------
+    //           |     trapframe     |
+    //           ---------------------
+    //           |                   |
+    //           |       heap        |
+    //           |                   |
+    //           ---------------------
+    //           |     user stack    |
+    //           ---------------------
+    //           |     user text     |
+    //           |     and data      |
+    //       0-> ---------------------
+    //
+    return -1;
+  }
+  uint64 mem = (uint64)kalloc();
+  if(mem == 0)
+    return -1;
+  memset((void *)mem, 0, PGSIZE);
+  va = PGROUNDDOWN(va);
+  if(mappages(p->pagetable, va, PGSIZE, mem, PTE_W|PTE_X|PTE_R|PTE_U) != 0){
+    kfree((void *)mem);
+    return -1;
+  }
+  return 0;
+}
