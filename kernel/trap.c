@@ -69,7 +69,7 @@ usertrap(void)
     // ok
   } else if(r_scause() == 13 || r_scause() == 15){
     uint64 va = r_stval();
-    if(handle_pagefault(va, p) == -1){
+    if(handle_cowfault(va, p) != 0){
       p->killed = 1;
     }
   } else {

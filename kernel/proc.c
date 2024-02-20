@@ -708,14 +708,46 @@ int handle_pagefault(uint64 va, struct proc *p)
     //
     return -1;
   }
+
+  pte_t *pte;
+  if((pte = walk(p->pagetable, va, 0)) && (*pte & PTE_V))
+    return 0;
+
   uint64 mem = (uint64)kalloc();
   if(mem == 0)
     return -1;
-  memset((void *)mem, 0, PGSIZE);
+  memset((void*)mem, 0, PGSIZE);
   va = PGROUNDDOWN(va);
   if(mappages(p->pagetable, va, PGSIZE, mem, PTE_W|PTE_X|PTE_R|PTE_U) != 0){
-    kfree((void *)mem);
+    kfree((void*)mem);
     return -1;
   }
+  return 0;
+}
+
+int
+handle_cowfault(uint64 va, struct proc *p)
+{
+  if(va >= MAXVA){
+    return -1;
+  }
+  pte_t *pte = walk(p->pagetable, va, 0);
+  if(pte == 0){
+    return -1;
+  }
+  if((*pte & PTE_U) == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_C) == 0){
+    return -1;
+  }
+
+  uint64 pa = PTE2PA(*pte);
+  uint64 mem = (uint64)kalloc();
+  if(mem == 0){
+    return -1;
+  }
+  
+  memmove((void *)mem, (void *)pa, PGSIZE);
+  *pte = PTE_W | PTE_FLAGS(*pte) | PA2PTE(mem);
+  *pte = *pte & ~PTE_C;
+  kfree((void *)pa);
   return 0;
 }
